@@ -1,6 +1,12 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+} from "firebase/auth";
+//prettier-ignore
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 
 const config = {
   apiKey: "AIzaSyCbeGhVU8q60WYEUUcwzxPg7QgnKKuWwww",
@@ -12,12 +18,43 @@ const config = {
 };
 
 const app = initializeApp(config);
+const db = getFirestore(app);
 
-export const auth = getAuth(app);
+export const userAuth = getAuth(app);
 export const firestore = getFirestore(app);
+export const createAccount = createUserWithEmailAndPassword;
 
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
 
 export const signInWithGoogle = () =>
-  signInWithPopup(auth, provider).catch((error) => console.log(error));
+  signInWithPopup(userAuth, provider).catch((error) => console.log(error));
+
+// 102Storing user data in Firebase
+export const createUserProfileDocument = async (userAuth, additionalData) => {
+  if (!userAuth) return;
+
+  const userRef = doc(db, "users", `${userAuth.uid}`);
+  const snapShot = await getDoc(userRef);
+
+  if (!snapShot.exists()) {
+    const { displayName, email } = userAuth;
+    const createAt = new Date();
+
+    try {
+      await setDoc(userRef, {
+        displayName,
+        email,
+        createAt,
+        ...additionalData,
+      });
+    } catch (err) {
+      console.log("error creating user", err.message);
+    }
+  }
+
+  return {
+    userRef,
+    onSnapshot,
+  };
+};
